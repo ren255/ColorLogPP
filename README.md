@@ -1,4 +1,4 @@
-# ColorLog++
+# ColorLogger++
 高機能で軽量、色付けシステム対応のArduino/STM32用C++ログライブラリ。ゼロmalloc、OOP設計、4レベル対応でプロフェッショナルなデバッグ環境を実現。
 
 Arduino IDE & STM32対応の包括的なC++ログライブラリ。
@@ -7,6 +7,15 @@ Arduino IDE & STM32対応の包括的なC++ログライブラリ。
 - 固定メモリ割り当て、ゼロmalloc(予定)
 - コンパイル時色タグ検証
 - OOP設計による高いカスタマイズ性
+
+## 実行
+**windows**
+
+```sh
+cd logger
+g++ main.hpp -o logger
+./log.exe
+```
 
 
 ![image](https://github.com/user-attachments/assets/d1e7f309-c25b-47e1-b853-3ee2f1e8ea47)
