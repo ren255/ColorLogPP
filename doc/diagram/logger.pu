@@ -1,0 +1,215 @@
+@startuml Logger Library Architecture
+
+!theme plain
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam classFontSize 9
+skinparam packageFontSize 11
+' skinparam linetype ortho
+
+' カラースキーム
+skinparam classBackgroundColor<<interface>> LightSkyBlue
+skinparam classBackgroundColor<<abstract>> LightYellow
+skinparam classBackgroundColor<<utility>> LightGreen
+
+' コア型パッケージ
+package "Core Types" {
+    enum LogLevel <<enum>> {
+        DEBUG
+        INFO
+        WARN
+        ERROR
+    }
+
+    package "logger" {
+        class LogEntry {
+            +LogLevel level
+            +const char* filename
+            +int line
+            +const char* message
+            +char* formatedMsg
+        }
+
+        class ColorMap::ColorMapping <<utility>> {
+            +{static} ANSI_COLORS : map<char, const char*>
+            +{static} LEVEL_COLORS : map<LogLevel, const char*>
+            +{static} RESET : const char*
+        }
+    }
+
+}
+
+' メインロガーパッケージ
+namespace logger {
+    class LoggerPair {
+        +unique_ptr<FormatterBase> formatter
+        +unique_ptr<IWriter> writer
+        +LoggerPair(unique_ptr<FormatterBase>, unique_ptr<IWriter>)
+    }
+
+    class Logger {
+        -LogLevel current_level
+        -vector<LoggerPair> output_pairs
+        -create_log_entry(LogLevel, const char*, int, const char*) : LogEntry
+
+        -log_internal(LogLevel, const char*, int, const char*)
+
+        +Logger(vector<LoggerPair>)
+        +Logger(unique_ptr<FormatterBase>, unique_ptr<IWriter>)
+
+        +log_output(LogLevel level, const char* file, int line, const char* fmt,...)
+
+        +set_level(LogLevel)
+        +get_level() : LogLevel
+        +get_output_count() : size_t
+    }
+}
+
+' フォーマッタパッケージ
+namespace logger::Formatters {
+    abstract class FormatterBase <<abstract>> {
+        +struct LogInfo
+        +{abstract} format(const LogEntry& entry)
+        #format_level_padding(const char* level_str, char* output,int target_width = 8)
+        #format_location_padding(const char* filename, int line, char* output,int target_width = 15)
+        #get_LogInfo(const LogEntry&) : LogInfo
+        +~FormatterBase()
+    }
+
+    class ConsoleFmt {
+        -bool color_enabled
+        +ConsoleFmt(bool colored = true)
+        +format(const LogEntry& entry)
+    }
+
+    class PlainFmt {
+        +format(const LogEntry& entry)
+    }
+}
+
+namespace logger_Writers {
+    class IWriter <<interface>> {
+        +write(const LogEntry& )
+        +~IWriter()
+    }
+
+    class ConsoleWriter {
+        +write(const LogEntry& )
+    }
+
+    class DebugWriter {
+        +write(const LogEntry& )
+    }
+
+    class BufferedWriter <<abstract>> {
+        -BUFFER_SIZE : int = 1024
+        -buffer : char[BUFFER_SIZE]
+        -buffer_pos : int = 0
+        +BufferedWriter()
+        +get_buffer() : const char*
+        +clear_buffer() : void
+        +is_empty() : bool
+
+        +write(const LogEntry& )
+        +flush() : void
+        +~BufferedWriter()
+    }
+
+    class PlainBufferedWriter {
+        +flush() : void
+    }
+}
+
+' ユーティリティパッケージ
+namespace logger::Utils {
+    class ColorHelper <<utility>> {
+        +{static} get_level_color(LogLevel, bool) : const char*
+        +{static} get_reset_color(bool) : const char*
+        +{static} parse_color_tags(const char*, char*, int)
+        +{static} strip_color_tags(const char*, char*, int)
+    }
+
+    class ValidationUtils <<utility>> {
+        +{static} check_colors_ct(const char*) : constexpr bool
+        +{static} validate_color_tags_runtime(const char*) : bool
+    }
+
+    class StringUtils <<utility>> {
+        +{static} extract_filename(const char*) : const char*
+        +{static} get_level_string(LogLevel) : const char*
+        +{static} log_sprintf(const LogEntry& entry, const char* format, ...) : int
+        +{static} apply_padding(const char* text, int target_width, char* output)
+        +{static} safe_strcpy(char*, const char*, int)
+    }
+}
+
+' グローバルAPIパッケージ
+package "Global API" {
+    class GlobalAPI <<utility>> {
+        +{static} get_logger() : Logger&
+        +{note} スレッドセーフシングルトン
+        +{note} std::once_flag使用
+        +{note} 複数出力ペア対応
+    }
+
+    class LogMacros <<utility>> {
+        -LOG_OUTPUT(level, fmt, ...)
+        +LOG_DEBUG(fmt, ...)
+        +LOG_INFO(fmt, ...)
+        +LOG_WARN(fmt, ...)
+        +LOG_ERROR(fmt, ...)
+        +{note} コンパイル時カラー検証
+        +{note} static_assert統合
+    }
+
+    class LogSettings {
+        +LOG_MSG_SIZE
+        +LOG_FMT_SIZE
+        +LOG_BUFF_SIZE
+        +COL_CHECK
+    }
+}
+
+' 主要関係
+Logger *-- LoggerPair : 複数含有
+LoggerPair *-- FormatterBase : コンポジション
+LoggerPair *-- IWriter : コンポジション
+
+Logger ..> LogLevel : 使用
+Logger ..> LogEntry : 生成
+
+' 継承関係
+FormatterBase <|-- ConsoleFmt
+FormatterBase <|-- PlainFmt
+
+IWriter <|-- ConsoleWriter
+IWriter <|-- DebugWriter
+IWriter <|-- BufferedWriter
+BufferedWriter <|-- PlainBufferedWriter
+
+' ユーティリティ依存関係
+Logger ..[#blue]> ValidationUtils : 検証
+Logger ..[#blue]> ColorHelper : 使用
+Logger ..[#blue]> StringUtils : 使用
+
+FormatterBase ..[#blue]> StringUtils : 使用
+ConsoleFmt ..[#blue]> ColorHelper : 使用
+ConsoleFmt ..[#blue]> ColorMap::ColorMapping : アクセス
+
+ColorHelper ..> ColorMap::ColorMapping : アクセス
+ValidationUtils ..> ColorMap::ColorMapping : アクセス
+
+' グローバルAPI依存関係
+GlobalAPI ..> Logger : 生成
+LogMacros ..> GlobalAPI : 呼び出し
+LogMacros ..[#blue]> ValidationUtils : 検証
+
+note top of Logger : メインオーケストレータ\nマルチ出力ペア管理\nレベルフィルタリング
+
+note top of LoggerPair : フォーマッタ-ライター\nペア管理単位
+
+note top of ColorMap::ColorMapping : ANSIカラーコード\nマッピング管理
+
+note top of ValidationUtils : コンパイル時・実行時\nカラータグ検証
+
+@enduml

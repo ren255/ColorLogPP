@@ -1,0 +1,162 @@
+# Logger Library Directory Tree
+
+```
+Logger Library/
+├── logger.hpp                          # メインAPI
+│   ├── include dependencies            # 全ヘッダー統合
+│   ├── get_logger()                    # グローバル取得/設定
+│   ├── get_streamer()                  # Streamerインスタンス取得/設定
+│   ├── setup_dual_display()            # 二分割表示セットアップ
+│   ├── INIT_LAYOUT()                   # 画面レイアウト初期化
+│   ├── LOG_DEBUG(fmt, ...)   
+│   ├── LOG_INFO(fmt, ...)   
+│   ├── LOG_WARNING(fmt, ...)
+│   ├── LOG_ERROR(fmt, ...)   
+│   ├── STREAM(name, fmt, ...)          # ストリームマクロ
+│   └── STREAM_FLASH(clear=false)       # フラッシュストリームマクロ
+│
+├── log_type.hpp                        # 型定義
+│   ├── enum LogLevel                   # ログレベル
+│   │   ├── DEBUG
+│   │   ├── INFO
+│   │   ├── WARNING
+│   │   └── ERROR
+│   └── namespace logger                # メイン名前空間
+│       ├── struct LogEntry             # ログエントリ
+│       │   ├── level
+│       │   ├── filename
+│       │   ├── line
+│       │   ├── function
+│       │   └── message
+│       ├── struct StreamEntry          # ストリームエントリ
+│       │   ├── name
+│       │   ├── message                 
+│       │   ├── timestamp
+│       │   └── display_order
+│       └── namespace ColorMap          # カラーマップ
+│           ├── ANSI_COLORS
+│           ├── LEVEL_COLORS
+│           ├── STREAM_COLORS
+│           └── RESET
+│
+├── log_core.hpp                        # コア実装
+│   └── namespace logger
+│       └── class Logger                # メインクラス
+│           ├── current_level           # 現在レベル
+│           ├── formatter               # フォーマッタ
+│           ├── writer                  # ライター
+│           ├── log_internal()          # 内部処理
+│           │   ├── level check         
+│           │   ├── validate tags       
+│           │   ├── format message      
+│           │   └── write output        
+│           ├── Logger(fmt, wrt)        # パラメータ付きコンストラクタ
+│           ├── set_level()             # レベル設定
+│           ├── get_level()             # レベル取得
+│           ├── debug()                 
+│           ├── info()                  
+│           ├── warning()               
+│           └── error()                 
+│
+├── log_streamer.hpp                    # ストリーマー実装
+│   └── namespace logger
+│       └── class Streamer              # ストリーマークラス
+│           ├── stream_entries          # ストリームエントリ群
+│           ├── display_order           # 表示順序
+│           ├── formatter               # フォーマッタ
+│           ├── writer                  # ライター
+│           ├── stream_internal()       # 内部処理
+│           │   ├── validate tags       
+│           │   ├── format message      
+│           │   ├── update entry        
+│           │   └── refresh display     
+│           ├── Streamer(fmt, wrt)      # パラメータ付きコンストラクタ
+│           ├── update_sensor()         # センサー更新
+│           ├── set_display_order()     # 表示順序設定
+│           ├── get_display_order()     # 表示順序取得
+│           ├── clear_sensor()          # センサー削除
+│           └── refresh_all()           # 全体再描画
+│
+├── log_utils.hpp                       # ユーティリティ
+│   └── namespace logger
+│       └── namespace Utils             # ユーティリティ群
+│           ├── class ColorHelper       # カラー処理
+│           │   ├── get_level_color()   # レベル色取得
+│           │   ├── get_stream_color()  # ストリーム色取得
+│           │   ├── get_reset_color()   # リセット色取得
+│           │   ├── parse_color_tags()  # タグ解析
+│           │   └── strip_color_tags()  # タグ除去
+│           ├── class ValidationUtils   # 検証処理
+│           │   ├── check_colors_ct()   # コンパイル時検証
+│           │   └── validate_color_tags_runtime() # 実行時検証
+│           ├── class StringUtils       # 文字列処理
+│           │   ├── extract_filename()  # ファイル名抽出
+│           │   ├── get_level_string()  # レベル文字列
+│           │   └── safe_strcpy()       # 安全コピー
+│           ├── class ScreenUtils       # 画面制御
+│           │   ├── save_cursor()       # カーソル保存
+│           │   ├── restore_cursor()    # カーソル復元
+│           │   ├── move_cursor()       # カーソル移動
+│           │   ├── clear_line()        # 行クリア
+│           │   ├── get_terminal_size() # ターミナルサイズ
+│           │   └── hide_cursor()       # カーソル非表示
+│           └── class LayoutManager     # レイアウト管理
+│               ├── stream_area_top     # ストリーム領域上端
+│               ├── stream_area_height  # ストリーム領域高さ
+│               ├── log_area_top        # ログ領域上端
+│               ├── log_area_height     # ログ領域高さ
+│               ├── init_layout()       # レイアウト初期化
+│               ├── get_stream_pos()    # ストリーム位置取得
+│               ├── get_log_pos()       # ログ位置取得
+│               └── update_layout()     # レイアウト更新
+│
+├── log_formatters.hpp                  # フォーマッタ
+│   └── namespace logger
+│       └── namespace Formatters        # フォーマッタ群
+│           ├── class IFormatter        # 基底インターフェース
+│           │   └── format()            # 仮想メソッド
+│           ├── class ConsoleFormatter  # コンソール用
+│           │   ├── color_enabled       # カラー有効
+│           │   ├── ConsoleFormatter()  # コンストラクタ
+│           │   └── format()
+│           ├── class PlainFormatter    # プレーン用
+│           │   └── format()
+│           └── class StreamFormatter   # ストリーム用
+│               ├── color_enabled       # カラー有効
+│               ├── fixed_width         # 固定幅
+│               ├── StreamFormatter()   # コンストラクタ
+│               └── format()
+└── log_writers.hpp                     # 出力ライター
+    └── namespace logger
+        └── namespace Writers           # ライター群
+            ├── class IWriter           # 基底インターフェース
+            │   └── write()             # 仮想メソッド
+            ├── class ConsoleWriter     # コンソール出力
+            │   └── write()
+            ├── class BufferedWriter    # バッファ出力
+            │   ├── BUFFER_SIZE         # バッファサイズ
+            │   ├── buffer              # バッファ領域
+            │   ├── buffer_pos          # バッファ位置
+            │   ├── underlying_writer   # 実際のライター
+            │   ├── BufferedWriter()    # コンストラクタ
+            │   ├── write()             # バッファ書込
+            │   ├── flush()             # バッファフラッシュ
+            │   └── ~BufferedWriter()   # デストラクタ
+            ├── class StreamWriter      # ストリーム出力
+            │   ├── current_row         # 現在行
+            │   ├── max_rows            # 最大行数
+            │   ├── base_row            # 基準行
+            │   ├── StreamWriter()      # コンストラクタ
+            │   ├── write()             # 固定位置書込
+            │   ├── set_position()      # 位置設定
+            │   └── clear_area()        # 領域クリア
+            └── class DualWriter        # 二重出力
+                ├── log_writer          # ログ用ライター
+                ├── stream_writer       # ストリーム用ライター
+                ├── layout_manager      # レイアウト管理
+                ├── DualWriter()        # コンストラクタ
+                ├── write()             # ログ書込
+                ├── write_stream()      # ストリーム書込
+                ├── init_display()      # 表示初期化
+                └── refresh_layout()    # レイアウト更新
+```

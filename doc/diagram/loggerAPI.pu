@@ -1,0 +1,96 @@
+@startuml
+!theme plain
+
+package "Logger Library" {
+    
+    package "Core Components" {
+        class "log_core.hpp" as LogCore {
+            + Logger class
+            + Main logging functionality
+        }
+        
+        class "log_type.hpp" as LogType {
+            + LogLevel enumeration
+            + Type definitions
+        }
+        
+        class "log_utils.hpp" as LogUtils {
+            + ValidationUtils
+            + Helper utilities
+        }
+    }
+    
+    package "Output & Formatting" {
+        class "log_writers.hpp" as LogWriters {
+            + Output writers
+            + File/Console writers
+        }
+        
+        class "log_formatters.hpp" as LogFormatters {
+            + Message formatters
+            + Color processing
+        }
+    }
+    
+    package "Public Interface" {
+        class "logger.hpp" as LoggerMain {
+            + get_logger()
+            + get_logger_config()
+            + LOG_DEBUG()
+            + LOG_INFO()
+            + LOG_WARNING()
+            + LOG_ERROR()
+        }
+    }
+    
+    package "Configuration" {
+        class "LoggerConfig" as Config {
+            + Configuration settings
+            + Level management
+        }
+        
+        class "Logger Instance" as Instance {
+            + Static singleton
+            + Global access point
+        }
+    }
+}
+
+' Dependencies
+LoggerMain --> LogCore : includes
+LoggerMain --> LogType : includes
+LoggerMain --> LogUtils : includes
+LoggerMain --> LogWriters : includes
+LoggerMain --> LogFormatters : includes
+
+LoggerMain --> Config : uses
+LoggerMain --> Instance : manages
+
+LogCore --> LogType : uses
+LogCore --> LogUtils : uses
+LogCore --> LogWriters : uses
+LogCore --> LogFormatters : uses
+
+LogUtils --> LogType : validates
+
+' Notes
+note right of LoggerMain
+  メインAPI
+  - マクロによる色タグ検証
+  - コンパイル時チェック
+  - グローバルアクセス関数
+end note
+
+note bottom of Config
+  設定管理
+  - ログレベル設定
+  - 出力先設定
+end note
+
+note bottom of Instance
+  シングルトンパターン
+  - 静的インスタンス
+  - スレッドセーフ
+end note
+
+@enduml
