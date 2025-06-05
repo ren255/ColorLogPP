@@ -1,0 +1,217 @@
+# Logger Library Code Structure Tree (CST)
+
+## 概要
+マルチ出力対応、カラーフォーマット、コンパイル時検証、柔軟なアーキテクチャを備えた包括的なC++ログライブラリ。
+
+## ファイル構造と依存関係
+
+```
+Logger Library/
+├── logger.hpp                                     # メインパブリックAPI
+│   ├── Dependencies
+│   │   ├── <cstdlib>                              # 標準Cライブラリ関数
+│   │   ├── <cstdio>                               # 標準C入出力操作
+│   │   ├── <cstdarg>                              # 可変引数処理
+│   │   ├── <cstring>                              # C文字列操作
+│   │   ├── <memory>                               # スマートポインタ
+│   │   ├── <mutex>                                # スレッド同期
+│   │   ├── <vector>                               # 動的配列
+│   │   ├── <map>                                  # 連想コンテナ
+│   │   ├── log_type.hpp                           # コア型定義
+│   │   ├── log_utils.hpp                          # ユーティリティ関数
+│   │   ├── log_writers.hpp                        # 出力ライター
+│   │   ├── log_formatters.hpp                     # メッセージフォーマッタ
+│   │   └── log_core.hpp                           # コアロガー実装
+│   ├── Global Functions
+│   │   └── get_logger() -> Logger&                # スレッドセーフシングルトンゲッタ
+│   │       ├── static std::once_flag              # スレッド安全機構
+│   │       ├── static unique_ptr<Logger>          # シングルトンインスタンス
+│   │       ├── Multiple output pairs              # コンソール＋ファイル対応
+│   │       ├── Default INFO level                 # 初期ログレベル
+│   │       └── Initialization logging             # セットアップ確認
+│   └── Logging Macros (with validation)
+│       ├── LOG_DEBUG(fmt, ...)                    # デバッグレベルマクロ
+│       ├── LOG_INFO(fmt, ...)                     # 情報レベルマクロ
+│       ├── LOG_WARNING(fmt, ...)                  # 警告レベルマクロ
+│       └── LOG_ERROR(fmt, ...)                    # エラーレベルマクロ
+│           └── static_assert validation           # コンパイル時カラータグ検証
+│
+├── log_type.hpp                                   # コア型定義
+│   ├── enum class LogLevel                        # ログ重要度レベル
+│   │   ├── DEBUG                                  # 詳細開発情報
+│   │   ├── INFO                                   # 一般情報
+│   │   ├── WARNING                                # 注意が必要
+│   │   └── ERROR                                  # エラー状態
+│   ├── namespace logger                           # メインライブラリ名前空間
+│   │   ├── struct LogEntry                        # 完全なログメッセージデータ
+│   │   │   ├── LogLevel level                     # メッセージ重要度
+│   │   │   ├── const char* filename               # ソースファイル名
+│   │   │   ├── int line                           # ソース行番号
+│   │   │   ├── const char* function               # 関数名（将来用）
+│   │   │   └── const char* message                # 実際のログメッセージ
+│   │   └── namespace ColorMap                     # ANSIカラー管理
+│   │       ├── ANSI_COLORS                        # カラー文字→ANSIコードマップ
+│   │       │   ├── Basic Colors                   # 基本色: r,g,y,b,p (赤,緑,黄,青,紫)
+│   │       │   ├── Bright Colors                  # 明色: a,l,s (水色,ライム,銀)
+│   │       │   ├── Dark Colors                    # 暗色: m,o,t,n,f (栗色,オリーブ,青緑,紺,紫紅)
+│   │       │   └── Special Colors                 # 特殊色: z,w,k (灰,白,黒)
+│   │       ├── LEVEL_COLORS                       # LogLevel→カラーマッピング
+│   │       │   ├── DEBUG -> Blue                  # デバッグ→青
+│   │       │   ├── INFO -> Green                  # 情報→緑
+│   │       │   ├── WARNING -> Yellow              # 警告→黄
+│   │       │   └── ERROR -> Red                   # エラー→赤
+│   │       └── RESET                              # ANSIリセットシーケンス
+│   └── Forward Declarations                       # クラス前方宣言
+│
+├── log_core.hpp                                   # コアロガー実装
+│   └── namespace logger
+│       ├── struct LoggerPair                      # フォーマッタ-ライターペア管理
+│       │   ├── unique_ptr<FormatterBase> formatter
+│       │   ├── unique_ptr<IWriter> writer
+│       │   └── LoggerPair(fmt, wrt)               # コンストラクタ
+│       └── class Logger                           # メインオーケストレータクラス
+│           ├── Private Members
+│           │   ├── LogLevel current_level         # 最小ログレベル
+│           │   └── vector<LoggerPair> output_pairs # 複数出力先
+│           ├── Private Methods
+│           │   ├── create_log_entry()             # LogEntryファクトリ
+│           │   ├── handle_validation_error()      # エラーハンドリング
+│           │   ├── format_message_with_pair()     # ペア固有フォーマット
+│           │   ├── output_message_with_pair()     # ペア固有出力
+│           │   └── log_internal()                 # コアログ処理
+│           │       ├── Level filtering            # レベルフィルタリング
+│           │       ├── Runtime validation         # 実行時検証
+│           │       ├── Multi-pair processing      # マルチペア処理
+│           │       └── Error handling             # エラーハンドリング
+│           ├── Public Constructors
+│           │   ├── Logger(vector<LoggerPair>)     # マルチペアコンストラクタ
+│           │   └── Logger(formatter, writer)      # シングルペアコンストラクタ
+│           ├── Configuration Methods
+│           │   ├── set_level(LogLevel)            # 最小レベル設定
+│           │   ├── get_level() -> LogLevel        # 現在レベル取得
+│           │   └── get_output_count() -> size_t   # 出力ペア数
+│           └── Logging Methods (variadic)
+│               ├── debug(file, line, fmt, ...)    # DEBUGレベル出力
+│               ├── info(file, line, fmt, ...)     # INFOレベル出力
+│               ├── warning(file, line, fmt, ...)  # WARNINGレベル出力
+│               └── error(file, line, fmt, ...)    # ERRORレベル出力
+│
+├── log_utils.hpp                                  # ユーティリティ関数
+│   └── namespace logger::Utils                    # ユーティリティ名前空間
+│       ├── class ColorHelper                      # カラー処理ユーティリティ
+│       │   ├── get_level_color()                  # ログレベルカラー取得
+│       │   ├── get_reset_color()                  # リセットシーケンス取得
+│       │   ├── parse_color_tags()                 # カラータグ→ANSI変換
+│       │   │   ├── Pipe tracking                  # パイプの奇偶状態追跡
+│       │   │   ├── Escape handling                # ||→リテラル|処理
+│       │   │   ├── Color tag lookup               # 文字→ANSIコード検索
+│       │   │   └── Reset insertion                # 自動カラーリセット挿入
+│       │   └── strip_color_tags()                 # プレーンテキスト用タグ除去
+│       ├── class ValidationUtils                  # 入力検証ユーティリティ
+│       │   ├── check_colors_ct()                  # コンパイル時カラー検証
+│       │   │   ├── constexpr evaluation           # コンパイル時評価
+│       │   │   ├── Pipe balance check             # パイプバランス確認
+│       │   │   ├── Valid character check (a-z)    # 有効文字確認（a-z）
+│       │   │   └── Leading pipe check             # 先頭パイプ確認
+│       │   └── validate_color_tags_runtime()      # 実行時カラー検証
+│       │       ├── Dynamic color map lookup       # 動的カラーマップ検索
+│       │       ├── Pipe balance verification      # パイプバランス検証
+│       │       └── Comprehensive error detection  # 包括的エラー検出
+│       └── class StringUtils                      # 文字列処理ユーティリティ
+│           ├── extract_filename()                 # パスからファイル名抽出
+│           ├── get_level_string()                 # LogLevel→文字列変換
+│           └── safe_strcpy()                      # 安全な文字列コピー
+│
+├── log_formatters.hpp                             # メッセージフォーマット
+│   └── namespace logger::Formatters               # フォーマッタ実装
+│       ├── abstract class FormatterBase           # ベースフォーマッタインターフェース
+│       │   ├── struct LogInfo                     # 処理済みログ情報
+│       │   │   ├── const char* level_str
+│       │   │   └── const char* filename
+│       │   ├── virtual format()                   # 純粋仮想フォーマットメソッド
+│       │   ├── get_LogInfo()                      # フォーマット済み情報抽出
+│       │   └── virtual ~FormatterBase()           # 仮想デストラクタ
+│       ├── class ConsoleFmt                       # コンソール最適化フォーマッタ
+│       │   ├── Private Members
+│       │   │   └── bool color_enabled             # カラー出力切替
+│       │   ├── ConsoleFmt(bool colored)           # カラーオプション付きコンストラクタ
+│       │   └── format() override                  # コンソールフォーマット実装
+│       │       ├── Color code application         # カラーコード適用
+│       │       ├── Level padding (8 chars)        # レベル文字詰め（8文字）
+│       │       ├── Filename:line alignment (13 chars) # ファイル名:行番号揃え（13文字）
+│       │       └── Color tag parsing              # カラータグ解析
+│       └── class PlainFmt                         # プレーンテキストフォーマッタ
+│           └── format() override                  # シンプルテキストフォーマット
+│               └── Basic [LEVEL] file:line : message format # 基本[レベル] ファイル:行 : メッセージ形式
+│
+└── log_writers.hpp                                # 出力ライター
+    └── namespace logger::Writers                  # ライター実装
+        ├── interface IWriter                      # ベースライターインターフェース
+        │   ├── virtual write()                    # 純粋仮想書き込みメソッド
+        │   └── virtual ~IWriter()                 # 仮想デストラクタ
+        ├── class ConsoleWriter                    # 標準出力ライター
+        │   └── write() override                   # printfベース出力
+        ├── class DebugWriter                      # 生表示付きデバッグ出力
+        │   └── write() override                   # 通常＋エスケープ出力
+        │       ├── Regular printf output          # 通常printf出力
+        │       ├── Raw character display (escape sequences visible) # 生文字表示（エスケープシーケンス可視）
+        │       └── Double newline separation      # 二重改行分離
+        └── class BufferedWriter                   # バッファ付き出力ラッパー
+            ├── Private Members
+            │   ├── static BUFFER_SIZE = 1024      # バッファサイズ定数
+            │   ├── char buffer[BUFFER_SIZE]       # メッセージバッファ
+            │   ├── int buffer_pos = 0             # 現在バッファ位置
+            │   └── unique_ptr<IWriter> underlying_writer # ラップ対象ライター
+            ├── BufferedWriter(unique_ptr<IWriter>) # コンストラクタ
+            ├── write() override                   # バッファ付き書き込み実装
+            │   ├── Buffer overflow check          # バッファオーバーフロー確認
+            │   ├── Auto-flush on newline          # 改行時自動フラッシュ
+            │   └── Message accumulation           # メッセージ蓄積
+            ├── flush()                            # 手動バッファフラッシュ
+            └── ~BufferedWriter()                  # 自動フラッシュ付きデストラクタ
+```
+
+## 主要設計パターン
+
+### 1. **戦略パターン**
+- `FormatterBase`と`IWriter`インターフェースにより差し替え可能なフォーマット・出力戦略を提供
+- 異なるフォーマッタ/ライター組み合わせの実行時設定
+
+### 2. **コンポジットパターン**
+- `LoggerPair`がフォーマッタとライターを単位として結合
+- `Logger`が複数ペアを管理し、同時マルチ出力先対応
+
+### 3. **シングルトンパターン**
+- `get_logger()`でスレッドセーフなシングルトンアクセス提供
+- 初期化安全性のため`std::once_flag`使用
+
+### 4. **テンプレートメソッドパターン**
+- `FormatterBase`が共通ヘルパーメソッド（`get_LogInfo`）提供
+- 派生クラスが固有フォーマット処理を実装
+
+### 5. **デコレータパターン**
+- `BufferedWriter`が他ライターをラップしてバッファリング機能追加
+- ライター機能の透過的拡張
+
+## カラータグシステム
+
+### 構文
+- 開始タグ: `x|`（xはカラー文字）
+- 終了タグ: `|`
+- リテラルパイプ: `||`
+- 例: `"r|エラー:|" -> \033[31mエラー:\033[0m`
+
+### 検証レベル
+1. **コンパイル時**: `check_colors_ct()`による`static_assert`
+2. **実行時**: `validate_color_tags_runtime()`による動的検証
+
+## スレッド安全性
+- シングルトン初期化: `std::once_flag`
+- 個別ロガーインスタンス: 性能のため意図的に非スレッドセーフ
+- マルチスレッドシナリオでは複数ロガーインスタンス使用可能
+
+## 性能機能
+- コンパイル時検証で実行時オーバーヘッド削減
+- 高コストフォーマット前のレベルフィルタリング
+- I/O操作削減のためのバッファ出力
+- 最小アロケーションによる効率的文字列処理
